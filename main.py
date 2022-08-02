@@ -16,12 +16,14 @@ class Category_object:
 
 
 class CategorySecond:
-    def __init__(self, title, descrpition, list_category, list_object):
+    def __init__(self, src, title, descrpition, list_category, list_object, category):
         self.title = title  # имя человека
         self.descrpition = descrpition
         self.listhref = list_category
         self.list_object = list_object
         self.index = 1
+        self.src = src
+        self.category = category
 
     def __next__(self):
         self.index += 1
@@ -29,15 +31,17 @@ class CategorySecond:
             raise StopIteration
 
     def print(self):
-        print(self.title, self.descrpition, self.listhref, self.list_object)
+        print(self.title, self.category, self.src, self.descrpition, self.listhref, self.list_object)
 
 
 class Category:
-    def __init__(self, title, descrpition, listhref):
+    def __init__(self, src, category, title, descrpition, listhref):
         self.title = title  # имя человека
         self.descrpition = descrpition
         self.listhref = listhref  # возраст человека
         self.index = 1
+        self.src = src
+        self.category = category
 
     def __next__(self):
         self.index += 1
@@ -53,11 +57,17 @@ def parsing_category(url):
     soup = BeautifulSoup(r.text, 'lxml')
     title = soup.find("div", id='content').find('h1')
     descrpition = soup.find('div', class_='category-info').find('ul').text
+
+    photo = soup.find('div', id='content').find('div', class_='category-info').find('div', class_='image').find(
+        'img').get('src')
+    p = requests.get(photo)
+    out = open(f"photos/Фильтроэлементы.png", "wb")
+    out.write(p.content)
+    out.close()
     listhref = []
     for a in soup.find('div', class_='category-list').find('ul').findAll('a', href=True):
         listhref.append(a['href'])
-
-    return Category(title.text, descrpition, listhref)
+    return Category(title.text, descrpition, str(listhref), "нету", photo)
 
 
 def parsing_category_list(url):
@@ -98,7 +108,14 @@ for i in urllist:
 def parsing_category_category(url):
     r = requests.get(url)
     soup = BeautifulSoup(r.text, 'lxml')
+    category = soup.find('div', id='content').find('div', class_='breadcrumb').find_all('a')[-2].text
+    photo = soup.find('div', id='content').find('div', class_='category-info').find('div', class_='image').find(
+        'img').get('src')
     title = soup.find('div', id='content').find('h1').text
+    p = requests.get(photo)
+    out = open(f"photos/f{title}.png", "wb")
+    out.write(p.content)
+    out.close()
     description = soup.find('div', class_='category-info').find('ul').text
     list_category = []
     for item in soup.find('div', id='content').find('div', class_='category-list').find_all('li'):
@@ -107,19 +124,27 @@ def parsing_category_category(url):
     for href in soup.find_all("#content > div.product-list > div:nth-child(1) > div.left"):
         list_object.append(href.find('div', class_='name').find('a', href=True)['href'])
 
-    return CategorySecond(title=title, descrpition=description, list_category=list_category, list_object=list_object)
+    return CategorySecond(src=photo, title=title, descrpition=description, list_category=list_category,
+                          list_object=list_object, category=category)
 
 
 def parsing_category_category_first(url):
     r = requests.get(url)
     soup = BeautifulSoup(r.text, 'lxml')
+    photo = soup.find('div', id='content').find('div', class_='category-info').find('div', class_='image').find(
+        'img').get('src')
     title = soup.find('div', id='content').find('h1').text
+    p = requests.get(photo)
+    out = open(f"photos/f{title}.png", "wb")
+    out.write(p.content)
+    out.close()
+    category = soup.find('div', id='content').find('div', class_='breadcrumb').find_all('a')[-2].text
     description = soup.find('div', class_='category-info').find('ul').text
     list_category = []
     for item in soup.find('div', id='content').find('div', class_='category-list').find_all('li'):
         list_category.append(item.find('a', href=True)['href'])
 
-    return Category(title=title, descrpition=description, listhref=list_category)
+    return Category(title=title, descrpition=description, listhref=list_category, category=category, src=photo)
 
 
 def take_href_from_splash(url):
@@ -150,13 +175,18 @@ def add_in_csv_category(clas):
     list = ""
     for uri in clas.listhref:
         list = f"{uri}, "
-    ws.append([clas.title, clas.descrpition, list])
+    ws.append([
+
+        clas.src, clas.title, clas.category, clas.descrpition, list
+    ])
 
 
 urls = [
     'http://www.shopprom.ru/aspiration/wamflo/wamflo_filtroelement/fnc_filtroelem/',
     'http://www.shopprom.ru/aspiration/wamflo/wamflo_filtroelement/kfnm_series/',
     'http://www.shopprom.ru/aspiration/wamflo/wamflo_filtroelement/kfew_series/']
+
+
 
 first = parsing_category('http://www.shopprom.ru/aspiration/wamflo/wamflo_filtroelement/')
 add_in_csv_category(first)
