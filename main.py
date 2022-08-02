@@ -1,6 +1,6 @@
 from bs4 import BeautifulSoup
 import requests
-from openpyxl import load_workbook
+from openpyxl import Workbook
 
 
 class Category_object:
@@ -72,8 +72,8 @@ def parsing_category_list(url):
 
 
 fn = 'shop.xlsx'
-wb = load_workbook(fn)
-ws = wb['data']
+wb = Workbook()
+ws = wb.active
 
 url = 'http://www.shopprom.ru/aspiration/wamflo/wamflo_filtroelement/'
 r = requests.get(url)
@@ -175,16 +175,20 @@ for uri in urls:
     add_in_csv_category(category)
     category.print()
     for item in category.listhref:
+        print(item)
+        try:
+            for i in take_href_from_splash(item):
+                size += 1
+                if size == 139:
+                    break
 
-        for i in take_href_from_splash(item):
-            size+=1
-            if size == 139:
-                break
-
-            print(i)
-            obj = parsing_category_obj_in_one_example(i)
-            parsing_category_obj_in_one_example(i).print()
-            add_in_csv_obj(obj)
+                print(i)
+                obj = parsing_category_obj_in_one_example(i)
+                parsing_category_obj_in_one_example(i).print()
+                add_in_csv_obj(obj)
+        except Exception as e:
+            print(e)
+            continue
 
     for item in category.list_object:
         obj = parsing_category_obj_in_one_example(item)
