@@ -9,6 +9,7 @@ class Category_object:
         self.descrpition = descrpition
         self.creator = creator
         self.model = model
+        self.index = 1
 
     def print(self):
         print(self.title, self.descrpition, self.model, self.creator)
@@ -20,6 +21,12 @@ class CategorySecond:
         self.descrpition = descrpition
         self.listhref = list_category
         self.list_object = list_object
+        self.index = 1
+
+    def __next__(self):
+        self.index += 1
+        if self.index >= len(self.list_object):
+            raise StopIteration
 
     def print(self):
         print(self.title, self.descrpition, self.listhref, self.list_object)
@@ -30,6 +37,12 @@ class Category:
         self.title = title  # имя человека
         self.descrpition = descrpition
         self.listhref = listhref  # возраст человека
+        self.index = 1
+
+    def __next__(self):
+        self.index += 1
+        if self.index >= len(self.list_object):
+            raise StopIteration
 
     def info(self):
         print(self.title, self.descrpition, self.listhref)
@@ -141,9 +154,9 @@ def add_in_csv_category(clas):
 
 
 urls = [
-        'http://www.shopprom.ru/aspiration/wamflo/wamflo_filtroelement/fnc_filtroelem/',
-        'http://www.shopprom.ru/aspiration/wamflo/wamflo_filtroelement/kfnm_series/',
-        'http://www.shopprom.ru/aspiration/wamflo/wamflo_filtroelement/kfew_series/']
+    'http://www.shopprom.ru/aspiration/wamflo/wamflo_filtroelement/fnc_filtroelem/',
+    'http://www.shopprom.ru/aspiration/wamflo/wamflo_filtroelement/kfnm_series/',
+    'http://www.shopprom.ru/aspiration/wamflo/wamflo_filtroelement/kfew_series/']
 
 first = parsing_category('http://www.shopprom.ru/aspiration/wamflo/wamflo_filtroelement/')
 add_in_csv_category(first)
@@ -151,12 +164,12 @@ second = parsing_category_category_first('http://www.shopprom.ru/aspiration/wamf
 add_in_csv_category(second)
 
 for i in second.listhref:
+    print(i)
     for item in take_href_from_splash(i):
         print(item)
         parsing_category_obj_in_one_example(item).print()
         add_in_csv_obj(parsing_category_obj_in_one_example(item))
-    pass
-
+size = 0
 for uri in urls:
     category = parsing_category_category(uri)
     add_in_csv_category(category)
@@ -164,9 +177,15 @@ for uri in urls:
     for item in category.listhref:
 
         for i in take_href_from_splash(item):
+            size+=1
+            if size == 139:
+                break
+
+            print(i)
             obj = parsing_category_obj_in_one_example(i)
             parsing_category_obj_in_one_example(i).print()
             add_in_csv_obj(obj)
+
     for item in category.list_object:
         obj = parsing_category_obj_in_one_example(item)
         add_in_csv_obj(obj)
