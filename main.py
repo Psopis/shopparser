@@ -2,17 +2,23 @@ from bs4 import BeautifulSoup
 import requests
 from openpyxl import Workbook
 
+fn = 'shop.xlsx'
+wb = Workbook()
+ws = wb.active
+ws.append(['Название', 'Артикул', 'Описание (html)', 'Производитель', 'Модель', 'Категория'])
+ws2 = wb.create_sheet(title="categories")
+ws2.append(['Название', 'Фотография', 'Описание (html)', 'Родительская категория'])
+
 
 class Category_object:
-    def __init__(self, title, descrpition, creator, model):
-        self.title = title  # имя человека
+    def __init__(self, title, article, descrpition, creator, model, category):
+        self.title = title
+        self.article = article
         self.descrpition = descrpition
         self.creator = creator
         self.model = model
+        self.category = category
         self.index = 1
-
-    def print(self):
-        print(self.title, self.descrpition, self.model, self.creator)
 
 
 class CategorySecond:
@@ -25,14 +31,6 @@ class CategorySecond:
         self.src = src
         self.category = category
 
-    def __next__(self):
-        self.index += 1
-        if self.index >= len(self.list_object):
-            raise StopIteration
-
-    def print(self):
-        print(self.title, self.category, self.src, self.descrpition, self.listhref, self.list_object)
-
 
 class Category:
     def __init__(self, src, category, title, descrpition, listhref):
@@ -42,14 +40,6 @@ class Category:
         self.index = 1
         self.src = src
         self.category = category
-
-    def __next__(self):
-        self.index += 1
-        if self.index >= len(self.list_object):
-            raise StopIteration
-
-    def info(self):
-        print(self.title, self.descrpition, self.listhref)
 
 
 def parsing_category(url):
@@ -67,7 +57,7 @@ def parsing_category(url):
     listhref = []
     for a in soup.find('div', class_='category-list').find('ul').findAll('a', href=True):
         listhref.append(a['href'])
-    return Category(title.text, descrpition, str(listhref), "нету", photo)
+    return Category(title.text, descrpition, str(listhref), "", photo)
 
 
 def parsing_category_list(url):
@@ -81,10 +71,6 @@ def parsing_category_list(url):
     return listhref
 
 
-fn = 'shop.xlsx'
-wb = Workbook()
-ws = wb.active
-
 url = 'http://www.shopprom.ru/aspiration/wamflo/wamflo_filtroelement/'
 r = requests.get(url)
 soup = BeautifulSoup(r.text, 'lxml')
@@ -96,7 +82,8 @@ for a in soup.find('div', class_='category-list').find('ul').findAll('a', href=T
 
 
 def save_ws(title, model, description, creator):
-    ws.append([title, creator, model, description])
+    print(1 + '1')
+    ws2.append([title, creator, model, description])
 
 
 listurlobj = []
@@ -124,6 +111,13 @@ def parsing_category_category(url):
     for href in soup.find_all("#content > div.product-list > div:nth-child(1) > div.left"):
         list_object.append(href.find('div', class_='name').find('a', href=True)['href'])
 
+    print(photo, title, list_category, list_object, category)
+
+    parent_category = soup.select('#content > div.breadcrumb > a:nth-child(5)')[0].text
+
+    parent_category = '' if parent_category == title else parent_category
+
+    ws2.append([title, photo, description, parent_category])
     return CategorySecond(src=photo, title=title, descrpition=description, list_category=list_category,
                           list_object=list_object, category=category)
 
@@ -156,74 +150,89 @@ def take_href_from_splash(url):
     return list
 
 
+def take_href_from_splash_with_add(url):
+    r = requests.get(url)
+    soup = BeautifulSoup(r.text, 'lxml')
+    list = []
+    for item in soup.find('div', id="content").find('div', class_="product-list").find_all('div', class_='name'):
+        list.append(item.find('a', href=True).get('href'))
+    title = soup.select('#content > h1')[0].text
+    photo = soup.select('#content > div.category-info > div > img')[0].get('src')
+    p = requests.get(photo)
+    out = open(f"photos/f{title}.png", "wb")
+    out.write(p.content)
+    out.close()
+    description = soup.select('#content > div.category-info')[0].get_text()
+    parent_category = soup.select('#content > div.breadcrumb > a:nth-child(5)')[0].text
+    parent_category = '' if parent_category == title else parent_category
+    ws2.append([title, photo, description, parent_category])
+    return list
+
+
 def parsing_category_obj_in_one_example(url):
     r = requests.get(url)
     soup = BeautifulSoup(r.text, 'lxml')
     title = soup.find('div', id='content').find('h1').text
     creator = soup.find('div', class_='right').find('a').text
-    model = soup.find('/html/body/div[1]/div[5]/div[2]/div[2]/div[1]/text()[1]')
+    model = soup.select('#content > div.product-info > div.right > div.description')[0].get_text()
+    model = model.split('\n')[2].split(': ')[1]
     description = soup.find('div', id='content').find('div', id='tab-description').text.strip()
+    category = soup.select('#content > div.breadcrumb > a:nth-child(6)')[0].text
 
-    return Category_object(title=title, creator=creator, model=model, descrpition=description)
+    return Category_object(title=title, creator=creator, model=model, descrpition=description, article=model,
+                           category=category)
 
 
 def add_in_csv_obj(clas):
     save_ws(clas.title, clas.creator, clas.model, clas.descrpition)
 
 
+def save_product(clas):
+    ws.append([clas.title, clas.article, clas.descrpition, clas.creator, clas.model, clas.category])
+
+
 def add_in_csv_category(clas):
     list = ""
     for uri in clas.listhref:
         list = f"{uri}, "
-    ws.append([
-
-        clas.src, clas.title, clas.category, clas.descrpition, list
+    ws2.append([
+        clas.title, clas.src, clas.descrpition, list
     ])
 
 
 urls = [
+    'http://www.shopprom.ru/aspiration/wamflo/wamflo_filtroelement/kfne_series/',
     'http://www.shopprom.ru/aspiration/wamflo/wamflo_filtroelement/fnc_filtroelem/',
     'http://www.shopprom.ru/aspiration/wamflo/wamflo_filtroelement/kfnm_series/',
     'http://www.shopprom.ru/aspiration/wamflo/wamflo_filtroelement/kfew_series/']
 
-
-
-first = parsing_category('http://www.shopprom.ru/aspiration/wamflo/wamflo_filtroelement/')
-add_in_csv_category(first)
 second = parsing_category_category_first('http://www.shopprom.ru/aspiration/wamflo/wamflo_filtroelement/kfne_series/')
-add_in_csv_category(second)
 
-for i in second.listhref:
-    print(i)
+for i in second.listhref:  # Там где нет подкатегорий
+    # print(i)
     for item in take_href_from_splash(i):
-        print(item)
-        parsing_category_obj_in_one_example(item).print()
-        add_in_csv_obj(parsing_category_obj_in_one_example(item))
+        obj = parsing_category_obj_in_one_example(item)
+        save_product(obj)
 size = 0
-for uri in urls:
+for uri in urls:  # категория
     category = parsing_category_category(uri)
-    add_in_csv_category(category)
-    category.print()
     for item in category.listhref:
-        print(item)
         try:
-            for i in take_href_from_splash(item):
+            for i in take_href_from_splash_with_add(item):
+                # print(item, i, 'lol')
                 size += 1
                 if size == 139:
                     break
 
-                print(i)
                 obj = parsing_category_obj_in_one_example(i)
-                parsing_category_obj_in_one_example(i).print()
-                add_in_csv_obj(obj)
+                save_product(obj)
+                # add_in_csv_obj(obj)
         except Exception as e:
             print(e)
-            continue
 
     for item in category.list_object:
+        # print(item)
         obj = parsing_category_obj_in_one_example(item)
         add_in_csv_obj(obj)
-        obj.print()
 
 wb.save(fn)
-wb.close()
